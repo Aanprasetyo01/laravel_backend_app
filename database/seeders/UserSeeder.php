@@ -7,7 +7,6 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
-
 class UserSeeder extends Seeder
 {
     /**
@@ -15,11 +14,24 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        user::factory(5)->create();
-        user::create([
-            'name' => 'Saipul Bahri',
-            'email' => 'superuser@gamail.com',
-            'email_verified_at' => now(),
+        User::factory(20)->create();
+        User::create([
+            'name' => 'aan',
+            'email' => 'aan@gmail.com',
+            'email_verified_at'  => now(),
+            'role' => 'admin',
+            'phone' => '6285640899224',
+            'bio' => 'flutter dev',
+            'password' => Hash::make('123456'),
+        ]);
+
+        User::create([
+            'name' => 'Super Admin',
+            'email' => 'superadmin@gmail.com',
+            'email_verified_at'  => now(),
+            'role' => 'superadmin',
+            'phone' => '6285640899225',
+            'bio' => 'laravel dev',
             'password' => Hash::make('123456'),
         ]);
     }
