@@ -1,62 +1,71 @@
 <?php
 
-namespace App\Actions\Fortify;
+namespace App\Http\Controllers;
 
 use App\Models\User;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
-use Laravel\Fortify\Contracts\UpdatesUserProfileInformation;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
-class UpdateUserProfileInformation implements UpdatesUserProfileInformation
+class UserController extends Controller
 {
     /**
-     * Validate and update the given user's profile information.
-     *
-     * @param  array<string, string>  $input
+     * Display a listing of the resource.
      */
-    public function update(User $user, array $input): void
+    public function index(Request $request)
     {
-        Validator::make($input, [
-            'name' => ['required', 'string', 'max:255'],
-            'phone' => 'nullable|numeric|digits_between:10,12',
-            'email' => [
-                'required',
-                'string',
-                'email',
-                'max:255',
-                Rule::unique('users')->ignore($user->id),
-            ],
-        ])->validateWithBag('updateProfileInformation');
-
-        if (
-            $input['email'] !== $user->email &&
-            $user instanceof MustVerifyEmail
-        ) {
-            $this->updateVerifiedUser($user, $input);
-        } else {
-            $user->forceFill([
-                'name' => $input['name'],
-                'email' => $input['email'],
-                'phone' => $input['phone'],
-                'bio' => $input['bio'],
-            ])->save();
-        }
+        // $users = User::paginate(5);
+        $users = DB::table('users')
+            ->when($request->input('search'), function ($query, $search) {
+                $query->where('name', 'like', '%' . $search . '%');
+            })->paginate(5);
+        return view('pages.user.index', compact('users'));
     }
 
     /**
-     * Update the given verified user's profile information.
-     *
-     * @param  array<string, string>  $input
+     * Show the form for creating a new resource.
      */
-    protected function updateVerifiedUser(User $user, array $input): void
+    public function create()
     {
-        $user->forceFill([
-            'name' => $input['name'],
-            'email' => $input['email'],
-            'email_verified_at' => null,
-        ])->save();
+        //
+    }
 
-        $user->sendEmailVerificationNotification();
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request)
+    {
+        //
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function show(User $user)
+    {
+        //
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(User $user)
+    {
+        //
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, User $user)
+    {
+        //
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(User $user)
+    {
+        //
     }
 }
