@@ -3,69 +3,71 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\UserResource;
-use App\Models\User;
+use App\Models\Order;
+use App\Services\Midtrans\CallbackService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
+use App\Models\User;
+use Kreait\Firebase\Messaging\CloudMessage;
+use Kreait\Firebase\Messaging\Notification;
 
-class AuthController extends Controller
+class CallbackController extends Controller
 {
-    public function login(Request $request)
+    public function sendNotificationToUser($userId, $message)
     {
-        $request->validate([
-            'email' => 'required|string|email',
-            'password' => 'required'
-        ]);
+        // Dapatkan FCM token user dari tabel 'users'
 
-        $user = User::where('email', $request->email)->first();
+        $user = User::find($userId);
+        $token = $user->fcm_token;
 
-        if (!$user) {
-            throw ValidationException::withMessages([
-                'email' => ['email incorrect']
+        // Kirim notifikasi ke perangkat Android
+        $messaging = app('firebase.messaging');
+        $notification = Notification::create('Order Dibayar', $message);
+
+        $message = CloudMessage::withTarget('token', $token)
+            ->withNotification($notification);
+
+        $messaging->send($message);
+    }
+
+    public function callback()
+    {
+        $callback = new CallbackService;
+
+        // if ($callback->isSignatureKeyVerified()) {
+        $notification = $callback->getNotification();
+        $order = $callback->getOrder();
+
+        if ($callback->isSuccess()) {
+            Order::where('id', $order->id)->update([
+                'payment_status' => 2,
             ]);
         }
 
-        if (!Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'password' => ['password incorrect']
+        if ($callback->isExpire()) {
+            Order::where('id', $order->id)->update([
+                'payment_status' => 3,
             ]);
         }
 
-        $token = $user->createToken('api-token')->plainTextToken;
-        return response()->json([
-            'jwt-token' => $token,
-            'user' => new UserResource($user),
-        ]);
-    }
+        if ($callback->isCancelled()) {
+            Order::where('id', $order->id)->update([
+                'payment_status' => 3,
+            ]);
+        }
 
-    public function register(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|string|email',
-            'password' => 'required',
-            'name' => 'required'
-        ]);
+        $this->sendNotificationToUser($order->seller_id, 'Pembayaran Order ' . $order->total_price . ' Sukses');
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => 'user',
-        ]);
-
-        $token = $user->createToken('api-token')->plainTextToken;
-        return response()->json([
-            'jwt-token' => $token,
-            'user' => new UserResource($user),
-        ]);
-    }
-
-    public function logout(Request $request)
-    {
-        $request->user()->tokens()->delete();
-        return response()->json([
-            'message' => 'logout successfully',
-        ]);
+        return response()
+            ->json([
+                'success' => true,
+                'message' => 'Notification successfully processed',
+            ]);
+        // } else {
+        //     return response()
+        //         ->json([
+        //             'error' => true,
+        //             'message' => 'Signature key not verified',
+        //         ], 403);
+        // }
     }
 }
